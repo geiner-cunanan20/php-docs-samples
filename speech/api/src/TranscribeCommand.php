@@ -17,6 +17,7 @@
 
 namespace Google\Cloud\Samples\Speech;
 
+use LogicException;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -55,13 +56,6 @@ EOF
                 'unable to be determined. '
             )
             ->addOption(
-                'sample-rate',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'The sample rate of the audio file. This is required if the sample ' .
-                'rate is unable to be determined. '
-            )
-            ->addOption(
                 'language-code',
                 null,
                 InputOption::VALUE_REQUIRED,
@@ -69,10 +63,23 @@ EOF
                 'en-US'
             )
             ->addOption(
+                'sample-rate',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'The sample rate of the audio file in hertz. This is required ' .
+                'if the sample rate is unable to be determined. '
+            )
+            ->addOption(
                 'sync',
                 null,
                 InputOption::VALUE_NONE,
                 'Run the transcription synchronously. '
+            )
+            ->addOption(
+                'stream',
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Stream the audio file. Supply an argument to stream from a mic.'
             )
         ;
     }
@@ -80,18 +87,34 @@ EOF
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $encoding = $input->getOption('encoding');
-        $sampleRate = $input->getOption('sample-rate');
         $languageCode = $input->getOption('language-code');
+        $sampleRate = $input->getOption('sample-rate');
         $audioFile = $input->getArgument('audio-file');
         $options = [
             'encoding' => $encoding,
+            'languageCode' => $languageCode,
             'sampleRateHertz' => $sampleRate,
         ];
-
-        if ($input->getOption('sync')) {
-            transcribe_sync($audioFile, $languageCode, $options);
+        if ($isGcs = preg_match('/^gs:\/\/([a-z0-9\._\-]+)\/(\S+)$/', $audioFile, $matches)) {
+            list($bucketName, $objectName) = array_slice($matches, 1);
+        }
+        if ($isGcs) {
+            if ($input->getOption('stream')) {
+                throw new LogicException('Cannot stream from a bucket!');
+            } elseif ($input->getOption('sync')) {
+                transcribe_sync_gcs($bucketName, $objectName, $languageCode, $options);
+            } else {
+                transcribe_async_gcs($bucketName, $objectName, $languageCode, $options);
+            }
         } else {
-            transcribe_async($audioFile, $languageCode, $options);
+            if ($input->getOption('stream')) {
+                $encodingInt = constant("google\cloud\speech\\v1\RecognitionConfig\AudioEncoding::$encoding");
+                streaming_recognize($audioFile, $languageCode, $encodingInt, $sampleRate);
+            } elseif ($input->getOption('sync')) {
+                transcribe_sync($audioFile, $languageCode, $options);
+            } else {
+                transcribe_async($audioFile, $languageCode, $options);
+            }
         }
     }
 }
