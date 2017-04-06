@@ -25,9 +25,7 @@ namespace Google\Cloud\Samples\Speech;
 
 # [START streaming_recognize]
 use Google\Cloud\Speech\V1\SpeechClient;
-use google\cloud\speech\v1\RecognitionConfig\AudioEncoding;
 use google\cloud\speech\v1\RecognitionConfig;
-use google\cloud\speech\v1\RecognitionAudio;
 use google\cloud\speech\v1\StreamingRecognitionConfig;
 use google\cloud\speech\v1\StreamingRecognizeRequest;
 
@@ -36,7 +34,7 @@ use google\cloud\speech\v1\StreamingRecognizeRequest;
  * Example:
  * ```
  * $audoEncoding =  google\cloud\speech\v1\RecognitionConfig\AudioEncoding::WAV
- * streaming_recognize('/path/to/audiofile.wav', 'en-US', );
+ * streaming_recognize('/path/to/audiofile.wav', 'en-US');
  * ```.
  *
  * @param string $audioFile path to an audio file.
