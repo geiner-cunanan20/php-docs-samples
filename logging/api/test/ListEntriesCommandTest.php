@@ -32,6 +32,8 @@ class ListEntriesCommandTest extends \PHPUnit_Framework_TestCase
 
     /* @var $hasCredentials boolean */
     protected static $hasCredentials;
+    /* @var $loggerName string */
+    protected static $loggerName;
     /* @var $projectId mixed|string */
     private $projectId;
 
@@ -40,6 +42,7 @@ class ListEntriesCommandTest extends \PHPUnit_Framework_TestCase
         $path = getenv('GOOGLE_APPLICATION_CREDENTIALS');
         self::$hasCredentials = $path && file_exists($path) &&
             filesize($path) > 0;
+        self::$loggerName = getenv('GOOGLE_LOGGER_NAME') ?: 'my_test_logger';
     }
 
     public function setUp()
@@ -57,7 +60,7 @@ class ListEntriesCommandTest extends \PHPUnit_Framework_TestCase
         $commandTester->execute(
             [
                 '--project' => $this->projectId,
-                '--logger' => 'my_test_logger',
+                '--logger' => self::$loggerName,
                 'message' => 'Test Message'
             ],
             ['interactive' => false]
@@ -66,6 +69,9 @@ class ListEntriesCommandTest extends \PHPUnit_Framework_TestCase
 
     public function testListEntries()
     {
+        // There is a sizeable delay, so we need to retry a bunch.
+        $this->eventuallyConsistentRetryCount = 10;
+
         $application = new Application();
         $application->add(new ListEntriesCommand());
         $commandTester = new CommandTester($application->get('list-entries'));
@@ -74,12 +80,12 @@ class ListEntriesCommandTest extends \PHPUnit_Framework_TestCase
             $commandTester->execute(
                 [
                     '--project' => $this->projectId,
-                    '--logger' => 'my_test_logger'
+                    '--logger' => self::$loggerName,
                 ],
                 ['interactive' => false]
             );
             $output = ob_get_clean();
             $this->assertRegexp('/: Test Message/', $output);
-        }, 5);
+        });
     }
 }
